@@ -61,37 +61,46 @@ app.get("/callback", function (req, res) {
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
       },
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        Authorization:
-          "Basic " +
-          new Buffer.from(clientId + ":" + clientSecret).toString("base64"),
+      config: {
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          Authorization:
+            "Basic " +
+            new Buffer.from(clientId + ":" + clientSecret).toString("base64"),
+        },
       },
       json: true,
     };
 
-    axios.post(authOptions.url, authOptions, (error, response, body) => {
-      if (!error && response.statusCode == 200) {
-        var accessToken = body.access_token,
-          refreshToken = body.refresh_token;
+    axios
+      .post(
+        authOptions.url,
+        querystring.stringify(authOptions.form),
+        authOptions.config,
+      )
+      .then((response) => {
+        if (response.status == 200) {
+          var accessToken = response.data.access_token,
+            refreshToken = response.refresh_token;
 
-        //pass tokens to the client
+          //pass tokens to the client
+          res.redirect(
+            process.env.CLIENT_URI +
+              querystring.stringify({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              }),
+          );
+        }
+      })
+      .catch((error) => {
         res.redirect(
           process.env.CLIENT_URI +
             querystring.stringify({
-              access_token: accessToken,
-              refresh_token: refreshToken,
+              error: error.message,
             }),
         );
-      } else {
-        res.redirect(
-          process.env.CLIENT_URI +
-            querystring.stringify({
-              error: "invalid_token",
-            }),
-        );
-      }
-    });
+      });
   }
 });
 
